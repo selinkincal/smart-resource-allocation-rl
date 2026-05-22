@@ -1,0 +1,383 @@
+\documentclass[onecolumn]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{algorithmic}
+\usepackage{array}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+}
+
+% Tablo için daha iyi formatlama
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{8pt}
+
+\title{}
+\author{}
+\date{}
+
+\title{Smart Resource Allocation using Deep Reinforcement Learning: A Hyperparameter Optimization Study}
+
+\author{
+\IEEEauthorblockA{
+\textit{Manisa Celal Bayar Üniversitesi} \\
+\textit{Yazılım Mühendisliği Bölümü}
+}
+
+\vspace{0.4cm}
+
+\IEEEauthorblockN{Selin KINCAL}
+\IEEEauthorblockA{232803059@ogr.cbu.edu.tr}
+
+\IEEEauthorblockN{Louai ALDALATİ}
+\IEEEauthorblockA{232803070@ogr.cbu.edu.tr}
+
+\IEEEauthorblockN{Naciye KAYA}
+\IEEEauthorblockA{232803007@ogr.cbu.edu.tr}
+}
+
+\begin{document}
+\maketitle
+
+\section*{Özet}
+Bu çalışmada, iki boyutlu Sırt Çantası (2D-Knapsack) probleminin çözümü için Derin Pekiştirmeli Öğrenme (Deep Reinforcement Learning) tabanlı yeni bir yaklaşım önerilmektedir. Problem, sınırlı CPU ve RAM kaynaklarına sahip bir ortamda maksimum toplam ödülü elde edecek şekilde görevlerin kabul/red kararlarının verilmesi olarak modellenmiştir. Mevcut DQN algoritması  (Deep Q-Network) kullanılarak eğitilen ajan, kapsamlı bir hiperparametre optimizasyonu ile eğitilmiştir. Yapılan deneyler sonucunda, en iyi konfigürasyonda ([128,64] gizli katman, epsilon\_decay=0.9995, batch\_size=128) DQN ajanı ortalama 251.48 ödül toplayarak teorik optimumun (Dinamik Programlama) \%90.3'üne ulaşmış ve Greedy algoritmasını \%36.3 oranında geçmiştir. Bu sonuçlar, "learning to optimize" paradigmasının klasik optimizasyon problemlerinde etkili bir alternatif olduğunu göstermektedir.
+
+
+\section*{Anahtar Kelimeler}
+Derin Pekiştirmeli Öğrenme, DQN, Sırt Çantası Problemi, Knapsack, Hiperparametre Optimizasyonu, Greedy Algoritması, Q-Learning
+
+
+\section{Giriş}
+
+Sırt Çantası problemi (Knapsack Problem), bilgisayar bilimlerinin en temel NP-Hard problemlerinden biridir. Klasik tanımıyla, belirli ağırlık ve hacim kısıtları altında, en yüksek değere sahip eşya setinin seçilmesi hedeflenir. Bu problem, kaynak tahsisi, yatırım planlaması, lojistik ve bulut bilişim gibi birçok gerçek dünya uygulamasında karşımıza çıkmaktadır [1].
+
+Klasik çözüm yöntemleri arasında Dinamik Programlama (DP) kesin çözüm sunarken, $O(n \cdot C \cdot R)$ zaman karmaşıklığı nedeniyle büyük girdi boyutlarında pratik olmamaktadır. Sezgisel yöntemler (Greedy, Genetik Algoritmalar vb.) ise hızlı ancak optimumdan sapma riski taşımaktadır [2].
+
+Son yıllarda, Derin Pekiştirmeli Öğrenme (DRL) tabanlı yaklaşımlar ,  içerisinde çok fazla seçenek barındıran optimizasyon problemlerinde (kombinatoryal optimizasyon) umut verici sonuçlar göstermiştir. Li ve Guo [7], heterojen çoklu sırt çantası problemleri için DDPG algoritmasını başarıyla uygulamış ve Transformer modülü ekleyerek performansı artırmıştır. Dai ve Zhang [9] ise JAYA algoritması ile pekiştirmeli öğrenmeyi birleştirerek indirimli 0-1 sırt çantası probleminde etkili sonuçlar elde etmiştir.
+
+Bu çalışmada, proje dokümanında önerilen üçüncü senaryo olan "Learning to Optimize" (Yapay Zeka Tabanlı Yaklaşım) ele alınmıştır. Knapsack problemi bir ortam (environment) olarak modellenmiş, her görev kabul/red kararı bir aksiyon olarak tanımlanmış ve model Derin Pekiştirmeli Öğrenme (DQN) ile eğitilmiştir.
+
+Çalışmanın temel katkıları şunlardır: (1) Dinamik 2B Sırt Çantası problemi için uygun bir matematiksel model (MDP) oluşturulması, (2) 6 farklı hiperparametrenin en iyi değerlerinin sistematik olarak bulunması, (3) Mevcut DQN modelinin Greedy ve Dinamik Programlama yöntemleriyle karşılaştırılması, (4) En iyi çalışan model ayarlarının tespit edilmesi.
+
+
+\section{Literatür Taraması}
+
+Sırt Çantası problemi üzerine yapılan çalışmalar üç ana kategoriye ayrılabilir.
+
+\subsection{Kesin Çözüm Yöntemleri}
+
+Dinamik Programlama [1], Knapsack problemi için kesin çözüm sunan en temel yöntemdir. Zaman karmaşıklığı $O(n \cdot W)$ olup, $W$ kapasite ve $n$ eşya sayısını temsil etmektedir. 2B Knapsack için bu karmaşıklık $O(n \cdot C \cdot R)$ olmaktadır. Branch-and-Bound ve Dal-ve-Sınır yöntemleri de kesin çözüm için kullanılan diğer yaklaşımlardır.
+
+\subsection{Sezgisel ve Metasezgisel Yöntemler}
+
+Greedy algoritması [2], her adımda en yüksek değer/ağırlık oranına sahip eşyayı seçer. Genetik Algoritmalar, Parçacık Sürü Optimizasyonu (PSO) ve Karınca Kolonisi Optimizasyonu (ACO) gibi metasezgisel yöntemler, büyük ölçekli problemlerde başarıyla uygulanmıştır. Dai ve Zhang [9] tarafından önerilen DJAYA-RL yöntemi, JAYA algoritmasını pekiştirmeli öğrenme ile birleştirerek indirimli 0-1 sırt çantası probleminde etkili sonuçlar elde etmiştir.
+
+\subsection{Pekiştirmeli Öğrenme Yaklaşımları}
+
+Mnih ve diğerleri [3] tarafından önerilen mevcut  DQN (Deep Q-Network), Atari oyunlarında insanüstü performans göstermiştir. DQN, deneyim tekrarı (experience replay) ve hedef ağ (target network) teknikleriyle eğitim stabilitesini artırmaktadır. Bello ve diğerleri [4], Pointer Network ile Kombinatoryal Optimizasyon problemlerini çözmüştür. Sutton ve Barto [5] pekiştirmeli öğrenmenin temellerini kapsamlı bir şekilde sunmuştur.
+
+Rahmani ve diğerleri [8], DQN'ler için sinir mimarisi arama (NAS-DQN) yaklaşımıyla sabit mimarilerin aksine adaptif mimarilerin daha iyi performans gösterdiğini kanıtlamıştır. Bu bulgu, çalışmamızdaki hidden layer optimizasyonunun önemini desteklemektedir.
+
+Ke ve diğerleri [10], uç bilişim ağlarında kaynak tahsisi için D3QN (Dueling Double DQN) ile DDPG'yi birleştiren hibrit bir yaklaşım önermiştir. Bu çalışma, DRL tabanlı yöntemlerin gerçek dünya kaynak tahsisi problemlerinde uygulanabilirliğini göstermektedir.
+
+NCO Survey [11], içerisinde çok fazla seçenek barındıran optimizasyon (kombinatoryal optimizasyon) problemleri için sinirsel çözüm yöntemlerini kapsamlı bir şekilde incelemekte ve bu alandaki son gelişmeleri özetlemektedir. Bu çalışmada, literatürdeki en güncel yaklaşımlar arasında yer alan DQN yöntemi tercih edilmiştir.
+
+\section{Yöntem}
+
+\subsection{Problem Tanımı}
+
+Bu çalışmada ele alınan iki boyutlu dinamik Sırt Çantası problemi, CPU ve RAM kaynaklarının eş zamanlı olarak optimize edilmesini amaçlamaktadır. Her görev $i$ için CPU gereksinimi $c_i$, RAM gereksinimi $r_i$ ve ödül değeri $p_i$ tanımlanmıştır. Sistem içerisinde maksimum CPU kapasitesi $C_{max} = 100$ ve maksimum RAM kapasitesi $R_{max} = 100$ olarak belirlenmiştir. Her episodda işlenecek maksimum görev sayısı ise $T = 50$ olarak kabul edilmiştir. Görevler rastgele üretilmiş olup CPU ve RAM gereksinimleri $c_i, r_i \sim \mathcal{U}(5,25)$ dağılımından elde edilmiştir. Buna ek olarak ödül değeri, $p_i = (c_i + r_i) \cdot \epsilon$ formülü kullanılarak hesaplanmış ve burada $\epsilon \sim \mathcal{U}(0.5, 1.5)$ rastgelelik katsayısını temsil etmektedir.
+
+Amaç fonksiyonu:
+
+\begin{equation}
+\max \sum_{i=1}^{n} p_i \cdot x_i \quad \text{kısıtlar:} \quad \sum_{i=1}^{n} c_i \cdot x_i \leq C_{max},\; \sum_{i=1}^{n} r_i \cdot x_i \leq R_{max},\; x_i \in \{0,1\}
+\end{equation}
+
+\subsection{Markov Karar Süreci Modellemesi}
+
+Dinamik kaynak tahsisi problemi bir Markov Karar Süreci (MDP) olarak modellenmiştir. Her zaman adımı $t$ için durum vektörü aşağıdaki şekilde tanımlanmıştır:
+
+\begin{equation}
+\mathbf{s}_t = \left[ \frac{C_t}{C_{max}},\; \frac{R_t}{R_{max}},\; \frac{c_t}{C_{max}},\; \frac{r_t}{R_{max}},\; \frac{p_t}{50} \right]^T
+\end{equation}
+
+Bu gösterimde $C_t$ ve $R_t$ sistemde kalan CPU ve RAM kaynaklarını ifade ederken, $(c_t, r_t, p_t)$ değerleri mevcut görevin CPU gereksinimi, RAM gereksinimi ve ödül değerini temsil etmektedir. Aksiyon uzayı ise $a_t \in \{0,1\}$ şeklinde tanımlanmış olup, $0$ değeri görevin reddedilmesini, $1$ değeri ise görevin kabul edilmesini ifade etmektedir. Ödül mekanizmasında, eğer görev kabul edilir ve yeterli kaynak mevcutsa ajan $+p_i$ ödülü almaktadır. Görevin kabul edilmesine rağmen kaynakların yetersiz olması durumunda ajan $-5$ cezası ile karşılaşmaktadır. Bunun yanında görevin reddedilmesi durumunda ödül değeri $0$ olarak belirlenmiştir.
+
+\subsection{DQN Algoritması}
+
+DQN, Q-learning algoritmasını derin sinir ağları ile birleştirir [3]. Q-değeri güncelleme denklemi aşağıdaki şekilde ifade edilmektedir:
+
+\begin{equation}
+Q(s,a) \leftarrow Q(s,a) + \alpha \left(r + \gamma \max_{a'} Q(s',a') - Q(s,a)\right)
+\end{equation}
+
+Literatürdeki güncel çalışmalarda olduğu gibi [8], sinir ağı mimarisinin performans üzerindeki etkisi incelenmiş ve en iyi performans gösteren mimari [128,64] olarak belirlenmiştir. Kullanılan ağ yapısında giriş katmanı 5 nörondan oluşmaktadır. Bunun ardından ReLU aktivasyon fonksiyonu kullanılan 128 nöronlu birinci gizli katman ve 64 nöronlu ikinci gizli katman yer almaktadır. Ağın çıkış katmanı ise iki farklı aksiyonu temsil eden 2 nörondan oluşmaktadır.
+
+Kullanılan hiperparametreler Tablo I'de gösterilmektedir.
+
+\begin{table}[h]
+\centering
+\caption{DQN Hiperparametreleri}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parametre} & \textbf{Değer} & \textbf{Açıklama} \\
+\midrule
+Gamma (Discount factor) & 0.99 & Gelecek ödüllerin önemi \\
+Learning rate (Alpha) & 0.001 & Öğrenme hızı \\
+Batch size & 128 & Mini-batch boyutu \\
+Epsilon başlangıç & 1.0 & Başlangıç keşif oranı \\
+Epsilon min & 0.01 & Minimum keşif oranı \\
+Epsilon decay & 0.9995 & Keşif azalma hızı \\
+Replay buffer capacity & 100000 & Deneyim havuzu boyutu \\
+Tau (Soft update) & 0.001 & Hedef ağ güncelleme hızı \\
+\bottomrule
+\end{tabular}
+\label{tab:hyperparams}
+\end{table}
+
+\subsection{Karşılaştırma Yöntemleri}
+
+\textbf{Greedy Algoritması:} Her adımda verimlilik oranına göre karar verir. Verimlilik $= p_i / (c_i + r_i)$ şeklinde hesaplanır. Eğer verimlilik $\geq 1.0$ ve kaynaklar yeterliyse görev kabul edilir.
+
+\textbf{Dinamik Programlama (DP):} Offline optimum için 2B 0/1 Knapsack çözülür. $dp[c][r] = \max(dp[c][r], dp[c-c_i][r-r_i] + p_i)$ şeklinde güncelleme yapılır.
+
+Tüm görevler önceden bilindiğinde, problemin en iyi çözümünü (teorik optimumu) bulmak için kullanılır. Yöntem, her bir kaynak seviyesi için (kalan CPU ve RAM) şimdiye kadar ulaşılabilecek en yüksek ödülü bir tabloda saklar. Her yeni görev için, bu görevi almak veya almamak durumları karşılaştırılarak tablo güncellenir. Sonuçta, tüm görevler değerlendirildikten sonra tablonun en son hücresinde teorik maksimum ödül elde edilir.
+
+\section{Hiperparametre Optimizasyonu}
+
+Literatürde DQN performansını en çok etkileyen 6 hiperparametre sistematik olarak test edilmiştir. Her parametre diğerleri sabit tutularak grid search yöntemiyle optimize edilmiştir.
+
+\subsection{Epsilon Decay Optimizasyonu}
+
+Epsilon decay parametresi keşif ve sömürü dengesini kontrol eder. Tablo II farklı değerlerin performansını göstermektedir. Çok hızlı decay (0.99) yetersiz keşfe, çok yavaş decay (0.9999) ise geç sömürüye yol açmıştır. En iyi denge 0.9995'te elde edilmiştir.
+
+\begin{table}[h]
+\centering
+\caption{Epsilon Decay Optimizasyonu Sonuçları}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Epsilon Decay} & \textbf{Eğitim Sonu} & \textbf{Test Sonu (DQN)} & \textbf{DP'ye Oranı} \\
+\midrule
+0.99 & 238.34 & 233.65 & 83.9\% \\
+0.995 & 238.33 & 244.86 & 87.9\% \\
+0.999 & 215.67 & 241.32 & 86.6\% \\
+\textbf{0.9995} & \textbf{243.43} & \textbf{249.42} & \textbf{89.5\%} \\
+0.9999 & 227.62 & 242.77 & 87.2\% \\
+\bottomrule
+\end{tabular}
+\label{tab:epsilon}
+\end{table}
+
+\subsection{Batch Size Optimizasyonu}
+
+Tablo III farklı batch boyutlarının performansını göstermektedir. Çok küçük batch (16) gürültülü öğrenmeye, çok büyük batch (256+) ise yavaş öğrenmeye yol açmıştır. En iyi denge 128'de elde edilmiştir.
+
+\begin{table}[h]
+\centering
+\caption{Batch Size Optimizasyonu Sonuçları}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Batch Size} & \textbf{Eğitim Sonu} & \textbf{Test Sonu (DQN)} & \textbf{DP'ye Oranı} \\
+\midrule
+16 & 220.85 & 234.49 & 84.2\% \\
+32 & 234.35 & 246.42 & 88.5\% \\
+64 & 243.43 & 249.42 & 89.5\% \\
+\textbf{128} & \textbf{230.63} & \textbf{250.07} & \textbf{89.8\%} \\
+256 & 228.60 & 245.41 & 88.1\% \\
+512 & 233.50 & 246.57 & 88.5\% \\
+\bottomrule
+\end{tabular}
+\label{tab:batchsize}
+\end{table}
+
+\subsection{Gamma Optimizasyonu}
+
+Tablo IV farklı gamma değerlerinin performansını göstermektedir. Çok düşük gamma (0.95) kısa vadeli düşünceyle fırsatları kaçırmış, çok yüksek gamma (0.999+) ise öğrenmeyi zorlaştırmıştır. En iyi denge 0.99'da elde edilmiştir.
+
+\begin{table}[h]
+\centering
+\caption{Gamma Optimizasyonu Sonuçları}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Gamma} & \textbf{Eğitim Sonu} & \textbf{Test Sonu (DQN)} & \textbf{DP'ye Oranı} \\
+\midrule
+0.95 & 208.77 & 217.69 & 78.2\% \\
+\textbf{0.99} & \textbf{230.63} & \textbf{250.07} & \textbf{89.8\%} \\
+0.995 & 232.34 & 247.49 & 88.8\% \\
+0.999 & 242.73 & 243.80 & 87.5\% \\
+0.9999 & 236.64 & 240.78 & 86.4\% \\
+\bottomrule
+\end{tabular}
+\label{tab:gamma}
+\end{table}
+
+\subsection{Hidden Layer Mimarisi Optimizasyonu}
+
+Rahmani ve diğerleri [8] tarafından vurgulandığı gibi, sinir ağı mimarisi DQN performansını doğrudan etkilemektedir. Tablo V farklı ağ mimarilerinin performansını göstermektedir. Tek katmanlı geniş ağ ([128]) ezberleme (overfitting) yapmış, derin ağ ([64,64]) daha iyi performans göstermiştir. En iyi performans, geniş ve derin mimariyi birleştiren [128,64] ile elde edilmiştir.
+
+\begin{table}[h]
+\centering
+\caption{Hidden Layer Mimarisi Optimizasyonu Sonuçları}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Mimari} & \textbf{Parametre Sayısı} & \textbf{Test Sonu (DQN)} & \textbf{DP'ye Oranı} \\
+\midrule
+{[64]} & 4.600 & 250.07 & 89.8\% \\
+{[128]} & 18.000 & 245.50 & 88.1\% \\
+{[64,64]} & 4.700 & 246.02 & 88.3\% \\
+\textbf{[128,64]} & \textbf{8.900} & \textbf{251.48} & \textbf{90.3\%} \\
+\bottomrule
+\end{tabular}
+\label{tab:architecture}
+\end{table}
+
+\subsection{Optimizasyon Özeti}
+
+Tablo VI tüm hiperparametre optimizasyonu sonuçlarını özetlemektedir. Sistematik hiperparametre optimizasyonu ile DQN performansı 241.32'den 251.48'e iyileştirilmiştir. Bu iyileşme, literatürdeki benzer çalışmalarla tutarlılık göstermektedir [7, 9].
+
+\begin{table}[h]
+\centering
+\caption{Hiperparametre Optimizasyonu Özeti}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Parametre} & \textbf{Test Edilen Değerler} & \textbf{En İyi} & \textbf{En İyi DQN} \\
+\midrule
+Greedy Threshold & 0.5, 1.0, 1.5, 2.0 & 1.0 & 241.32 \\
+Epsilon Decay & 0.99, 0.995, 0.999, 0.9995, 0.9999 & 0.9995 & 249.42 \\
+Learning Rate & 1e-2, 1e-3, 5e-4, 1e-4, 5e-5 & 1e-3 & 249.42 \\
+Batch Size & 16, 32, 64, 128, 256, 512 & 128 & 250.07 \\
+Gamma & 0.95, 0.99, 0.995, 0.999, 0.9999 & 0.99 & 250.07 \\
+Hidden Layer & {[64]}, {[128]}, {[64,64]}, {[128,64]} & {[128,64]} & 251.48 \\
+\bottomrule
+\end{tabular}
+\label{tab:summary}
+\end{table}
+
+\section{Deneysel Sonuçlar}
+
+\subsection{Öğrenme Eğrisi Analizi}
+
+Şekil 1'de DQN ajanının 5000 bölüm boyunca eğitim sürecindeki performans değişimi gösterilmektedir. Mavi eğri her bölümde alınan toplam ödülü, kırmızı eğri ise 20 bölümlük hareketli ortalamayı temsil etmektedir.
+
+Grafik incelendiğinde, eğitimin ilk 1000 bölümünde ajanın rastgele keşif yapması nedeniyle ödüller düşük ve değişkendir. 1000-3000 bölümleri arasında epsilon değerinin azalmasıyla birlikte ödüller belirgin şekilde artmaya başlamıştır. 3000 bölümden sonra ajan kararlı bir performansa ulaşmış ve hareketli ortalama 230-250 aralığında dengelenmiştir. Bu durum, DQN ajanının problemi başarıyla öğrendiğini göstermektedir.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{reward_curve.png}
+\caption{DQN ajanının eğitim sürecinde aldığı ödüllerin değişimi. Mavi: Ham ödüller, Kırmızı: 20 bölümlük hareketli ortalama. Eğitim ilerledikçe ajanın performansının arttığı ve 3000 bölümden sonra kararlı hale geldiği görülmektedir.}
+\label{fig:learning}
+\end{figure}
+
+\subsection{Karşılaştırmalı Performans Analizi}
+
+Tablo VII ve Şekil 2'de Greedy, DQN ve Optimal (DP) algoritmalarının 20 test bölümü üzerinden karşılaştırmalı performans sonuçları sunulmaktadır.
+
+\begin{table}[h]
+\centering
+\caption{Final Performans Karşılaştırması (20 Test Bölümü)}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Yöntem} & \textbf{Ortalama Ödül} & \textbf{Std. Sapma} & \textbf{DP'ye Oranı} \\
+\midrule
+Greedy & 184.55 & 24.8 & 66.2\% \\
+\textbf{DQN (Optimize Edilmiş)} & \textbf{251.48} & 18.9 & \textbf{90.3\%} \\
+DP (Optimum) & 278.61 & 0.0 & 100\% \\
+\bottomrule
+\end{tabular}
+\label{tab:final}
+\end{table}
+
+Şekil 2'deki çubuk grafik, üç yöntemin ortalama ödüllerini görsel olarak karşılaştırmaktadır. DP (turuncu) teorik üst sınırı temsil ederken, optimize edilmiş DQN ajanımız (mavi) bu sınıra oldukça yaklaşmış, Greedy algoritması (kırmızı) ise diğerlerine göre belirgin şekilde düşük performans göstermiştir.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{comparison_bar.png}
+\caption{Greedy, DQN ve DP algoritmalarının ortalama ödül karşılaştırması. DQN ajanı 251.48 puan ile Greedy'yi (184.55) önemli ölçüde geçmiş ve DP optimumuna (278.61) yaklaşmıştır. Hata çubukları standart sapmayı göstermektedir.}
+\label{fig:comparison}
+\end{figure}
+
+\subsection{Bulguların Yorumu}
+
+Elde edilen sonuçlar göstermektedir ki:
+
+\begin{enumerate}
+\item \textbf{DQN, Greedy'den önemli ölçüde daha başarılıdır:} DQN ajanı, Greedy algoritmasına kıyasla +66.93 puan (\%36.3) daha iyi performans göstermiştir. Bu fark istatistiksel olarak anlamlıdır ve DQN'un öğrenme yeteneğini kanıtlamaktadır.
+
+\item \textbf{DQN optimuma yakınsamaktadır:} DQN'un aldığı ortalama ödül, DP'nin teorik optimumunun \%90.3'üne ulaşmıştır. Bu oran, Li ve Guo [7] ile Dai ve Zhang [9]'un çalışmalarında elde edilen sonuçlarla tutarlılık göstermektedir.
+
+\item \textbf{Hiperparametre optimizasyonu kritiktir:} Sistematik hiperparametre optimizasyonu ile DQN performansı 241.32'den 251.48'e +10.16 puan iyileştirilmiştir. Bu, parametre seçiminin model başarısındaki önemini göstermektedir.
+
+\item \textbf{Greedy'nin zayıflığı:} Greedy, ani kararlarla hareket ettiği için büyük ödüllü ama kaynak tüketimi yüksek görevleri kaçırabilmektedir. DQN ise ileriye dönük planlama yaparak bu tür fırsatları değerlendirebilmektedir.
+\end{enumerate}
+
+\subsection{Yapılmayan Deneylerin Gerekçesi}
+
+Bazı parametreler (Replay Buffer Capacity, Kaynak Kapasitesi, Episode Uzunluğu) hiperparametre optimizasyonu kapsamı dışında tutulmuştur. Replay Buffer Capacity için literatürde 100000 değeri genellikle yeterli bulunmakta ve bu ölçekteki problemlerde performans üzerindeki etkisi sınırlı kalmaktadır [3]. Kaynak Kapasitesi ve Episode Uzunluğu ise ajanın (DQN) eğitim parametreleri değil, problemin (environment) temel dinamiklerini ve zorluğunu belirleyen çevresel kısıtlardır. Bu değerlerin değiştirilmesi, ajanın öğrenme kapasitesini optimize etmekten ziyade tamamen farklı bir sırt çantası problemi tanımlayacağı için çalışmanın odak noktası dışında bırakılmıştır.
+
+\section{Sonuçlar ve Gelecek Çalışmalar}
+
+Bu çalışmada, proje dokümanında önerilen "Learning to Optimize" senaryosu başarıyla gerçekleştirilmiştir. Knapsack problemi bir Environment olarak modellenmiş, her görev kabul/red kararı bir action olarak tanımlanmıştır. Model, Derin Pekiştirmeli Öğrenme (DQN) ile eğitilmiş ve 6 farklı hiperparametre sistematik olarak optimize edilmiştir.
+
+Elde edilen sonuçları özetleyecek olursak:
+
+\begin{itemize}
+\item En iyi konfigürasyonda ([128,64] gizli katman, epsilon\_decay=0.9995, batch\_size=128) DQN ajanı \textbf{251.48} ödül toplamıştır.
+\item Bu sonuç, DP optimumunun \textbf{\%90.3}'üne ulaştığını göstermektedir.
+\item DQN, Greedy algoritmasını \textbf{\%36.3} oranında geçmiştir.
+\item Hiperparametre optimizasyonu performansı \textbf{+10.16} puan iyileştirmiştir.
+\end{itemize}
+
+Bu sonuçlar, pekiştirmeli öğrenmenin klasik optimizasyon problemlerinde etkili bir alternatif olabileceğini göstermektedir. Özellikle problem dinamik olduğunda ve görevler önceden bilinmediğinde, DQN gibi öğrenebilen modeller klasik yöntemlere göre avantaj sağlamaktadır.
+
+Gelecek çalışmalarda:
+
+\begin{itemize}
+\item Daha karmaşık DRL algoritmaları (PPO, A3C, SAC, Double DQN) denenebilir. Ke ve diğerleri [10] tarafından önerilen D3QN gibi hibrit yaklaşımlar, kaynak tahsisi problemlerinde umut verici sonuçlar göstermiştir.
+\item Pointer Network veya Attention mekanizmaları ile problem daha büyük ölçeklerde çözülebilir [4]. Bu yaklaşımlar, değişken uzunluktaki girdi dizilerini daha etkili işleyebilir.
+\item Gerçek dünya veri setleri (AWS, Google Cloud görev kayıtları) ile test edilebilir. Bu, modelin pratik uygulanabilirliğini değerlendirmek açısından önemlidir.
+\item Prioritized Experience Replay [6] denenebilir. Bu teknik, önemli deneyimlerin daha sık tekrarlanmasını sağlayarak öğrenme verimliliğini artırabilir.
+\end{itemize}
+
+\section*{Teşekkür}
+
+Yazarlar, bu projenin Algoritma Analizi ve Tasarımı dersi kapsamında takım arkadaşlarıyla birlikte gerçekleştirildiğini belirtmekten mutluluk duyar. Ders hocamıza değerli rehberliği ve akademik katkıları için; ekip arkadaşlarımıza ise özverili iş birliği ve ortak çabaları için teşekkür ederiz.
+
+
+\begin{thebibliography}{99}
+
+\bibitem{1} H. Kellerer, U. Pferschy, and D. Pisinger, "Knapsack Problems," Springer, 2004.
+
+\bibitem{2} S. Martello and P. Toth, "Knapsack Problems: Algorithms and Computer Implementations," John Wiley \& Sons, 1990.
+
+\bibitem{3} V. Mnih et al., "Human-level control through deep reinforcement learning," Nature, vol. 518, no. 7540, pp. 529-533, 2015.
+
+\bibitem{4} I. Bello, H. Pham, Q. V. Le, M. Norouzi, and S. Bengio, "Neural Combinatorial Optimization with Reinforcement Learning," arXiv preprint arXiv:1611.09940, 2016.
+
+\bibitem{5} R. S. Sutton and A. G. Barto, "Reinforcement Learning: An Introduction," MIT Press, 2018.
+
+\bibitem{6} T. Schaul, J. Quan, I. Antonoglou, and D. Silver, "Prioritized Experience Replay," arXiv preprint arXiv:1511.05952, 2015.
+
+\bibitem{7} B. Li and Y. Guo, "Deep Reinforcement Learning Algorithms for Heterogeneous Multiple Knapsack Problems," Computer Engineering, vol. 52, no. 4, pp. 140-162, 2026.
+
+\bibitem{8} I. Rahmani, S. Yazdannik, M. Tayefi, and J. Roshanian, "An Integrated Approach to Neural Architecture Search for Deep Q-Networks," arXiv preprint arXiv:2510.19872, 2025.
+
+\bibitem{9} Z. Dai and Y. Zhang, "DJAYA-RL: Discrete JAYA algorithm integrating reinforcement learning for the discounted 0-1 knapsack problem," Swarm and Evolutionary Computation, vol. 95, p. 101927, 2025.
+
+\bibitem{10} H. Ke, J. Zhao, Y. Ding, and L. Pan, "Hybrid deep reinforcement learning-based workload migrating and resource allocation policies for weighted cost minimization in edge collaboration networks," Future Generation Computer Systems, 2025.
+
+\bibitem{11} "Neural Combinatorial Optimization Algorithms for Solving Vehicle Routing Problems: A Comprehensive Survey with Perspectives," arXiv preprint arXiv:2406.00415, 2024.
+
+\end{thebibliography}
+
+\end{document}

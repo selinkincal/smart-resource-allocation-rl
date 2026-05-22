@@ -1,47 +1,50 @@
+# env.py
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
 class ResourceAllocationEnv(gym.Env):
     """
-    بيئة مخصصة لتخصيص الموارد تعتمد على مسألة حقيبة الظهر الديناميكية (Adaptive Knapsack).
-    الهدف: تعظيم العائد من خلال قبول المهام المناسبة ضمن السعة المحددة للموارد (CPU و RAM).
+    Özel kaynak tahsisi ortamı: Dinamik Çanta Problemini (Dynamic Knapsack) simüle eder.
+    Hedef: Sınırlı CPU ve RAM kaynaklarıyla, gelen görevler arasından en yüksek ödülü toplamak.
+    Her görev ya KABUL edilir (kaynak tüketir, ödül verir) ya da REDdedilir (kaynak tüketmez).
     """
     
     def __init__(self, max_cpu=100.0, max_ram=100.0, max_steps=50):
         super(ResourceAllocationEnv, self).__init__()
         
-        # إعدادات البيئة الأساسية (سعة الموارد وعدد المهام في كل حلقة التدريب)
-        self.max_cpu = max_cpu
-        self.max_ram = max_ram
-        self.max_steps = max_steps
+        # Ortam sabitleri
+        self.max_cpu = max_cpu      # Maksimum CPU kapasitesi (birim)
+        self.max_ram = max_ram      # Maksimum RAM kapasitesi (birim)
+        self.max_steps = max_steps  # Bir bölümdeki maksimum görev sayısı
         
-        # 1. فضاء الإجراءات (Action Space):
-        # 0 = رفض المهمة (Reject)
-        # 1 = قبول المهمة وتخصيص الموارد (Accept)
+        # 1. AKSİYON UZAYI (Action Space)
+        # 0 = GÖREVİ REDDET
+        # 1 = GÖREVİ KABUL ET (kaynak yeterliyse)
         self.action_space = spaces.Discrete(2)
         
-        # 2. فضاء الحالة (Observation/State Space) مع التطبيع (Normalization):
-        # المصفوفة تتكون من 5 قيم محصورة تقريباً بين 0.0 و 1.0 (أو أعلى قليلاً للعائد)
-        # [نسبة_CPU_المتبقي, نسبة_RAM_المتبقي, نسبة_CPU_للمهمة, نسبة_RAM_للمهمة, نسبة_العائد]
+        # 2. GÖZLEM UZAYI (Observation/State Space)
+        # 5 boyutlu vektör: [kalan_CPU_oranı, kalan_RAM_oranı, görev_CPU_oranı, görev_RAM_oranı, görev_ödül_normalize]
+        # Normalizasyon (0-1 arası) sinir ağlarının daha hızlı ve kararlı öğrenmesi için yapılır
         self.observation_space = spaces.Box(
             low=np.array([0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32),
-            high=np.array([1.0, 1.0, 1.0, 1.0, 10.0], dtype=np.float32), 
+            high=np.array([1.0, 1.0, 1.0, 1.0, 10.0], dtype=np.float32),  # Ödül 10'a kadar normalize edilmiş
             dtype=np.float32
         )
         
     def reset(self, seed=None, options=None):
         """
-        إعادة ضبط البيئة لبدء حلقة (Episode) جديدة.
+        Ortamı başlangıç durumuna sıfırla.
+        Yeni bir bölüm (episode) başlatmak için çağrılır.
         """
-        super().reset(seed=seed, options=options)
+        super().reset(seed=seed, options=options)  # Rastgele sayı üreteci seed'ini ayarla
         
-        # استعادة السعة القصوى للموارد
+        # Kaynakları tamamen doldur
         self.current_cpu = self.max_cpu
         self.current_ram = self.max_ram
         self.current_step = 0
         
-        # توليد أول مهمة
+        # İlk görevi oluştur
         self._generate_task()
         
         obs = self._get_obs()
@@ -50,73 +53,90 @@ class ResourceAllocationEnv(gym.Env):
 
     def _generate_task(self):
         """
-        توليد مهمة جديدة بمتطلبات وعوائد ديناميكية (عشوائية).
+        Yeni bir görev oluşturur.
+        CPU ve RAM talepleri 5-25 birim arasında rastgele.
+        Ödül = (CPU_talep + RAM_talep) * gürültü (0.5-1.5 arası)
         """
-        # متطلبات عشوائية بين 5 و 30 وحدة
-        self.task_cpu = self.np_random.uniform(5.0, 30.0)
-        self.task_ram = self.np_random.uniform(5.0, 30.0)
+        # Rastgele talepler (5.0 ile 25.0 arası)
+        self.task_cpu = self.np_random.uniform(5.0, 25.0)
+        self.task_ram = self.np_random.uniform(5.0, 25.0)
         
-        # حساب العائد بناءً على المتطلبات مع إضافة معامل تشويش (Noise) 
+        # Ödül hesaplama: daha büyük görevler genelde daha çok ödül verir, ama rastgele gürültü var
         base_reward = (self.task_cpu + self.task_ram)
         noise = self.np_random.uniform(0.5, 1.5) 
         self.task_reward = base_reward * noise
 
     def _get_obs(self):
         """
-        إرجاع الحالة الحالية للبيئة كـ Numpy Array مع تطبيع البيانات (Normalization)
-        لتحسين وتسريع تعلم الشبكة العصبية.
+        Mevcut durumu normalize edilmiş vektör olarak döndür.
+        Normalizasyon: Q-network'ün daha iyi öğrenmesini sağlar.
         """
         return np.array([
-            self.current_cpu / self.max_cpu,          # نسبة الـ CPU المتبقية
-            self.current_ram / self.max_ram,          # نسبة الـ RAM المتبقية
-            self.task_cpu / self.max_cpu,             # حجم مهمة CPU كنسبة
-            self.task_ram / self.max_ram,             # حجم مهمة RAM كنسبة
-            self.task_reward / 100.0                  # تصغير حجم العائد 
+            self.current_cpu / self.max_cpu,          # Kalan CPU oranı (0-1)
+            self.current_ram / self.max_ram,          # Kalan RAM oranı (0-1)
+            self.task_cpu / self.max_cpu,             # Görevin CPU talebi (oran)
+            self.task_ram / self.max_ram,             # Görevin RAM talebi (oran)
+            self.task_reward / 50.0                   # Normalize edilmiş ödül (max yaklaşık 50 olabilir)
         ], dtype=np.float32)
 
     def step(self, action):
         """
-        تنفيذ الإجراء المختار من قبل الوكيل وتحديث البيئة.
+        Verilen aksiyonu ortamda uygula.
+        Aksiyon: 0=Reddet, 1=Kabul et
+        
+        Dönüş değerleri:
+        - obs: Yeni gözlem
+        - reward: Bu adımda kazanılan ödül
+        - terminated: Bölüm bitti mi? (max_steps'e ulaşıldı mı?)
+        - truncated: Zaman aşımı (bu ortamda kullanılmıyor)
+        - info: Ek bilgi (hata ayıklama için)
         """
         reward = 0.0
         terminated = False
-        truncated = False
+        truncated = False  # Bu ortamda zaman aşımı yok, sadece terminated var
         
-        # معالجة الإجراء
-        if action == 1:  # الوكيل يقرر قبول المهمة
-            # التحقق من توفر الموارد الكافية
+        # AKSİYONU İŞLE
+        if action == 1:  # KABUL ET
+            # Kaynak yeterli mi kontrol et
             if self.task_cpu <= self.current_cpu and self.task_ram <= self.current_ram:
-                # خصم الموارد وإعطاء المكافأة
+                # Kaynakları düş, ödülü ver
                 self.current_cpu -= self.task_cpu
                 self.current_ram -= self.task_ram
                 reward = float(self.task_reward)
             else:
-                # عقوبة (Penalty)
-                reward = -10.0 
-        else: # الوكيل يقرر رفض المهمة
+                # Kaynak yetersiz: CEZA (-5)
+                # Bu, agent'a geçersiz aksiyonun kötü olduğunu öğretir
+                reward = -5.0 
+        else:  # REDDET (action == 0)
+            # Reddetmenin hiçbir maliyeti yok, ödül de yok
             reward = 0.0
             
-        # التقدم للخطوة التالية
+        # ZAMAN ADIMINI İLERLET
         self.current_step += 1
         
-        # التحقق من انتهاء الحلقة
+        # BÖLÜM SONMU KONTROLÜ
         if self.current_step >= self.max_steps:
-            terminated = True
+            terminated = True  # Maksimum adıma ulaşıldı, bölüm biter
         else:
+            # Yeni görev oluştur (bir sonraki adım için)
             self._generate_task()
             
+        # Yeni gözlemi hesapla
         obs = self._get_obs()
+        
+        # Hata ayıklama için ek bilgi
         info = {
             "current_cpu": self.current_cpu,
             "current_ram": self.current_ram,
-            "is_valid_action": reward > 0
+            "is_valid_action": reward > 0  # Kabul edildi ve kaynak yeterliydiyse True
         }
         
         return obs, reward, terminated, truncated, info
 
     def render(self):
         """
-        طباعة حالة البيئة الحالية (مفيدة أثناء تصحيح الأخطاء Debugging).
+        Ortamın mevcut durumunu insan okunabilir formatta yazdırır.
+        Hata ayıklama ve geliştirme sırasında kullanılır.
         """
         print(f"Step: {self.current_step}/{self.max_steps}")
         print(f"Remaining Resources -> CPU: {self.current_cpu:.1f} | RAM: {self.current_ram:.1f}")

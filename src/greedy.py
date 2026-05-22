@@ -1,38 +1,48 @@
+# greedy.py
 import numpy as np
 
 class GreedyAgent:
     """
-    وكيل يعتمد على الخوارزمية الجشعة (Greedy Algorithm).
-    يتخذ القرار بناءً على توفر الموارد ونسبة العائد إلى التكلفة في اللحظة الحالية.
+    Açgözlü (Greedy) algoritma tabanlı ajan.
+    Her adımda anlık olarak en iyi görünen kararı verir.
+    Hiçbir eğitim yapmaz, sadece elindeki kurala göre hareket eder.
+    Basit bir referans (baseline) olarak kullanılır.
     """
     def __init__(self, threshold=1.0):
-        # الحد الأدنى لنسبة العائد إلى الموارد لقبول المهمة.
-        # القيمة 1.0 تعني أن العائد يجب أن يكون مساوياً أو أكبر من مجموع الموارد المستهلكة.
+        # threshold: Ödül/maliyet oranı bu değerin üstündeyse görevi kabul et
+        # threshold=1.0: Ödül, harcanan kaynaklardan (CPU+RAM) fazla veya eşitse kabul et
         self.threshold = threshold
 
     def select_action(self, obs):
         """
-        استقبال ملاحظة البيئة الحالية (Observation) واتخاذ قرار (0 للرفض، 1 للقبول).
+        Gözleme (observation) göre aksiyon seç.
+        obs: [kalan_CPU, kalan_RAM, görev_CPU, görev_RAM, görev_ödül]
+        
+        Mantık:
+        1. Kaynak yeterli değilse -> REDDET
+        2. Kaynak yeterliyse, verimlilik (ödül/maliyet) hesapla
+        3. Verimlilik threshold değerinden büyük veya eşitse -> KABUL ET, yoksa REDDET
         """
+        # Gözlem vektörünü bileşenlerine ayır
         current_cpu, current_ram, task_cpu, task_ram, task_reward = obs
         
-        # 1. التحقق من توفر الموارد الكافية
+        # 1. Kaynak yeterlilik kontrolü (en temel kısıt)
         if task_cpu <= current_cpu and task_ram <= current_ram:
             
-            # 2. حساب كفاءة المهمة (نسبة العائد إلى التكلفة)
+            # 2. Verimlilik (Efficiency) = Ödül / Toplam Kaynak Tüketimi
             cost = task_cpu + task_ram
             efficiency = task_reward / cost if cost > 0 else 0
             
-            # 3. اتخاذ القرار الجشع (Greedy Decision)
+            # 3. Açgözlü karar: eşik değerini geçiyorsa kabul et
             if efficiency >= self.threshold:
-                return 1 # قبول المهمة
+                return 1  # KABUL ET
                 
-        return 0 # رفض المهمة
+        return 0  # REDDET
 
     def evaluate(self, env, num_episodes=10):
         """
-        اختبار الوكيل الجشع على البيئة لعدد محدد من الحلقات (Episodes)
-        وإرجاع متوسط العائد، ليتم استخدامه كمعيار مقارنة (Baseline).
+        Açgözlü ajanı belirli sayıda bölümde test et.
+        Ortalama ödülü hesapla. Bu, DQN gibi gelişmiş yöntemlerle karşılaştırma için baz oluşturur.
         """
         total_rewards = []
         
@@ -54,16 +64,12 @@ class GreedyAgent:
         print(f"Average Reward over {num_episodes} episodes: {avg_reward:.2f}")
         return avg_reward
 
-# قسم اختباري لتشغيل البيئة والوكيل معاً والتحقق من سلامة الكود
+# Basit bir test: Açgözlü ajanı ortamda çalıştır
 if __name__ == "__main__":
     from env import ResourceAllocationEnv
     
-    # تهيئة البيئة
     env = ResourceAllocationEnv(max_cpu=100.0, max_ram=100.0, max_steps=50)
-    
-    # تهيئة الوكيل الجشع
     greedy_agent = GreedyAgent(threshold=1.0)
     
-    # تقييم أداء الوكيل الجشع
     print("Starting Greedy Baseline evaluation...")
     greedy_agent.evaluate(env, num_episodes=5)

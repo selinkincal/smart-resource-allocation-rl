@@ -1,3 +1,4 @@
+# compare.py
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,33 +9,41 @@ from dqn_agent import DQNAgent
 from dp_solver import DPSolver
 
 def evaluate_models(num_episodes=20):
-    # تهيئة البيئة بناءً على معايير مشكلة حقيبة الظهر (Knapsack Problem)
+    # === ORTAMIN HAZIRLANMASI ===
+    # Kaynak tahsisi ortamı oluşturuluyor (CPU ve RAM kapasiteleri 100 birim, maksimum 50 adım)
+    # Bu ortam, Dinamik Çanta (Dynamic Knapsack) problemini simüle eder
     env = ResourceAllocationEnv(max_cpu=100.0, max_ram=100.0, max_steps=50)
     
-    # تحديد المسارات المطلقة لضمان الوصول للملفات من أي مكان
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(current_dir)
     
+    # Kaydedilmiş modellerin ve grafiklerin bulunduğu/oluşturulacağı klasör yolları
     models_dir = os.path.join(project_root, "saved_models")
     plots_dir = os.path.join(project_root, "plots")
     
-    # تهيئة الوكلاء (Greedy, DQN, DP)
+    # === AGENT'LARIN (AKTÖRLERİN) HAZIRLANMASI ===
+    # 1. Açgözlü (Greedy) Agent: Her adımda anlık en iyi kararı verir, eğitim gerektirmez
     greedy_agent = GreedyAgent(threshold=1.0)
     
+    # 2. DQN Agent: Derin Q-Öğrenmesi ile eğitilmiş sinir ağı tabanlı agent
     dqn_agent = DQNAgent(state_size=5, action_size=2)
     model_path = os.path.join(models_dir, "dqn_model.pth")
     
-    # تحميل النموذج المدرب إذا كان موجوداً
+    # Daha önce eğitilmiş model var mı kontrol et
     if os.path.exists(model_path):
+        # Varsa, kaydedilmiş ağırlıkları yükle
         dqn_agent.qnetwork_local.load_state_dict(torch.load(model_path))
         print(f"Successfully loaded trained model from: {model_path}")
     else:
         print("Warning: Trained model not found. DQN will act with random weights!")
         
+    # Değerlendirme moduna al 
     dqn_agent.qnetwork_local.eval() 
     
+    # 3. DP (Dinamik Programlama) Çözücü: Teorik optimum çözümü hesaplar (Oracle/Referans)
     dp_solver = DPSolver(max_cpu=100.0, max_ram=100.0)
     
+    # Her bir algoritmanın skorlarını toplayacağımız listeler
     greedy_scores = []
     dqn_scores = []
     dp_scores = []
@@ -42,40 +51,48 @@ def evaluate_models(num_episodes=20):
     print("Starting the comprehensive final comparison (Greedy vs DQN vs DP)...")
     print("-" * 70)
     
+    # Belirtilen sayıda bölüm (episode) boyunca test yap
     for episode in range(num_episodes):
+        # Her bölüm için farklı ama tekrarlanabilir rastgelelik (seed) kullan
         seed = 42 + episode
         
-        # 1. تقييم الخوارزمية الجشعة وجمع المهام للبرمجة الديناميكية
-        obs_greedy, _ = env.reset(seed=seed)
+        # === 1. GREEDY (AÇGÖZLÜ) ALGORİTMASININ DEĞERLENDİRİLMESİ ===
+        obs_greedy, _ = env.reset(seed=seed)  # Ortamı sıfırla, ilk gözlemi al
         score_greedy = 0
         terminated = False
-        tasks_this_episode = [] 
+        tasks_this_episode = []  # Bu bölümdeki tüm görevleri sakla (DP için)
         
         while not terminated:
-            # تسجيل المهام لتحليلها بواسطة DP (Oracle)
+            # Gelen görevi kaydet: DP daha sonra tüm görevleri görüp optimal seçimi yapacak
             tasks_this_episode.append((env.task_cpu, env.task_ram, env.task_reward))
             
+            # Açgözlü agent'tan aksiyon al (0: reddet, 1: kabul et)
             action = greedy_agent.select_action(obs_greedy)
+            # Aksiyonu ortamda uygula
             obs_greedy, reward, terminated, _, _ = env.step(action)
             score_greedy += reward
         greedy_scores.append(score_greedy)
         
-        # 2. تقييم وكيل التعلم المعزز العميق (DQN)[cite: 1]
-        obs_dqn, _ = env.reset(seed=seed)
+        # === 2. DQN (DERİN Q-ÖĞRENMESİ) AGENT'ININ DEĞERLENDİRİLMESİ ===
+        obs_dqn, _ = env.reset(seed=seed)  # Aynı seed ile aynı görev sırası garanti edilir
         score_dqn = 0
         terminated = False
         while not terminated:
+            # evaluate=True: epsilon-greedy yapma, tamamen deterministik karar ver
             action = dqn_agent.act(obs_dqn, evaluate=True) 
             obs_dqn, reward, terminated, _, _ = env.step(action)
             score_dqn += reward
         dqn_scores.append(score_dqn)
         
-        # 3. تقييم البرمجة الديناميكية (DP Solver) للحصول على الحل الأمثل[cite: 1]
+        # === 3. DP (DİNAMİK PROGRAMLAMA) İLE OPTİMAL ÇÖZÜM ===
+        # Bu bölümde görülen tüm görevleri ver, DP en iyi kombinasyonu hesaplasın
         score_dp = dp_solver.solve(tasks_this_episode)
         dp_scores.append(score_dp)
         
+        # Her bölümün sonuçlarını ekrana yaz
         print(f"Episode {episode+1:02d} | Greedy: {score_greedy:7.2f} | DQN: {score_dqn:7.2f} | DP (Optimal): {score_dp:7.2f}")
 
+    # === ORTALAMALARIN HESAPLANMASI ===
     avg_greedy = np.mean(greedy_scores)
     avg_dqn = np.mean(dqn_scores)
     avg_dp = np.mean(dp_scores)
@@ -85,10 +102,11 @@ def evaluate_models(num_episodes=20):
     print(f"Average DQN Reward:    {avg_dqn:.2f}")
     print(f"Average DP Reward:     {avg_dp:.2f} (Theoretical Maximum)")
     
-    # إنشاء مجلد الرسوم البيانية إذا لم يكن موجوداً
+    # === GRAFİK OLUŞTURMA VE KAYDETME ===
+    # Grafiklerin kaydedileceği klasör yoksa oluştur
     os.makedirs(plots_dir, exist_ok=True)
     
-    # رسم المقارنة الثلاثية وحفظها للتقرير الأكاديمي[cite: 1]
+    # Çubuk grafik (bar chart) ile üç algoritmanın performans karşılaştırması
     labels = ['Greedy', 'DQN', 'DP (Oracle)']
     averages = [avg_greedy, avg_dqn, avg_dp]
     
@@ -97,7 +115,7 @@ def evaluate_models(num_episodes=20):
     plt.title('Performance Comparison: Greedy vs DQN vs DP')
     plt.ylabel('Average Total Reward')
     
-    # إضافة الأرقام فوق الأعمدة
+    # Çubukların üzerine sayısal değerleri yaz
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2, yval + 2, round(yval, 2), ha='center', va='bottom', fontweight='bold')
