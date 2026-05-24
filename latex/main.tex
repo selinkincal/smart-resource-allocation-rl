@@ -10,6 +10,7 @@
 \usepackage{xcolor}
 \usepackage{algorithmic}
 \usepackage{array}
+\usepackage{float}
 
 \hypersetup{
     colorlinks=true,
@@ -30,7 +31,7 @@
 
 \author{
 \IEEEauthorblockA{
-\textit{Manisa Celal Bayar Üniversitesi} \\
+\textit{\textbf{Manisa Celal Bayar Üniversitesi}} \\
 \textit{Yazılım Mühendisliği Bölümü}
 }
 
@@ -59,11 +60,11 @@ Derin Pekiştirmeli Öğrenme, DQN, Sırt Çantası Problemi, Knapsack, Hiperpar
 
 \section{Giriş}
 
-Sırt Çantası problemi (Knapsack Problem), bilgisayar bilimlerinin en temel NP-Hard problemlerinden biridir. Klasik tanımıyla, belirli ağırlık ve hacim kısıtları altında, en yüksek değere sahip eşya setinin seçilmesi hedeflenir. Bu problem, kaynak tahsisi, yatırım planlaması, lojistik ve bulut bilişim gibi birçok gerçek dünya uygulamasında karşımıza çıkmaktadır [1].
+Sırt Çantası problemi (Knapsack Problem), bilgisayar bilimlerinin en temel NP-Hard problemlerinden biridir. Klasik tanımıyla, belirli ağırlık ve hacim kısıtları altında, en yüksek değere sahip eşya setinin seçilmesi hedeflenir. Bu problem, kaynak tahsisi, yatırım planlaması, lojistik ve bulut bilişim gibi birçok gerçek dünya uygulamasında karşımıza çıkmaktadır \cite{kellerer2004knapsack}.
 
-Klasik çözüm yöntemleri arasında Dinamik Programlama (DP) kesin çözüm sunarken, $O(n \cdot C \cdot R)$ zaman karmaşıklığı nedeniyle büyük girdi boyutlarında pratik olmamaktadır. Sezgisel yöntemler (Greedy, Genetik Algoritmalar vb.) ise hızlı ancak optimumdan sapma riski taşımaktadır [2].
+Klasik çözüm yöntemleri arasında Dinamik Programlama (DP) kesin çözüm sunarken, $O(n \cdot C \cdot R)$ zaman karmaşıklığı nedeniyle büyük girdi boyutlarında pratik olmamaktadır. Sezgisel yöntemler (Greedy, Genetik Algoritmalar vb.) ise hızlı ancak optimumdan sapma riski taşımaktadır \cite{martello1990knapsack}.
 
-Son yıllarda, Derin Pekiştirmeli Öğrenme (DRL) tabanlı yaklaşımlar ,  içerisinde çok fazla seçenek barındıran optimizasyon problemlerinde (kombinatoryal optimizasyon) umut verici sonuçlar göstermiştir. Li ve Guo [7], heterojen çoklu sırt çantası problemleri için DDPG algoritmasını başarıyla uygulamış ve Transformer modülü ekleyerek performansı artırmıştır. Dai ve Zhang [9] ise JAYA algoritması ile pekiştirmeli öğrenmeyi birleştirerek indirimli 0-1 sırt çantası probleminde etkili sonuçlar elde etmiştir.
+Son yıllarda, Derin Pekiştirmeli Öğrenme (DRL) tabanlı yaklaşımlar ,  içerisinde çok fazla seçenek barındıran optimizasyon problemlerinde (kombinatoryal optimizasyon) umut verici sonuçlar göstermiştir. Li ve Guo \cite{li2026deep}, heterojen çoklu sırt çantası problemleri için DDPG algoritmasını başarıyla uygulamış ve Transformer modülü ekleyerek performansı artırmıştır. Dai ve Zhang \cite{dai2025djaya} ise JAYA algoritması ile pekiştirmeli öğrenmeyi birleştirerek indirimli 0-1 sırt çantası probleminde etkili sonuçlar elde etmiştir.
 
 Bu çalışmada, proje dokümanında önerilen üçüncü senaryo olan "Learning to Optimize" (Yapay Zeka Tabanlı Yaklaşım) ele alınmıştır. Knapsack problemi bir ortam (environment) olarak modellenmiş, her görev kabul/red kararı bir aksiyon olarak tanımlanmış ve model Derin Pekiştirmeli Öğrenme (DQN) ile eğitilmiştir.
 
@@ -76,21 +77,21 @@ Sırt Çantası problemi üzerine yapılan çalışmalar üç ana kategoriye ayr
 
 \subsection{Kesin Çözüm Yöntemleri}
 
-Dinamik Programlama [1], Knapsack problemi için kesin çözüm sunan en temel yöntemdir. Zaman karmaşıklığı $O(n \cdot W)$ olup, $W$ kapasite ve $n$ eşya sayısını temsil etmektedir. 2B Knapsack için bu karmaşıklık $O(n \cdot C \cdot R)$ olmaktadır. Branch-and-Bound ve Dal-ve-Sınır yöntemleri de kesin çözüm için kullanılan diğer yaklaşımlardır.
+Dinamik Programlama \cite{kellerer2004knapsack}, Knapsack problemi için kesin çözüm sunan en temel yöntemdir. Zaman karmaşıklığı $O(n \cdot W)$ olup, $W$ kapasite ve $n$ eşya sayısını temsil etmektedir. 2B Knapsack için bu karmaşıklık $O(n \cdot C \cdot R)$ olmaktadır. Branch-and-Bound ve Dal-ve-Sınır yöntemleri de kesin çözüm için kullanılan diğer yaklaşımlardır.
 
 \subsection{Sezgisel ve Metasezgisel Yöntemler}
 
-Greedy algoritması [2], her adımda en yüksek değer/ağırlık oranına sahip eşyayı seçer. Genetik Algoritmalar, Parçacık Sürü Optimizasyonu (PSO) ve Karınca Kolonisi Optimizasyonu (ACO) gibi metasezgisel yöntemler, büyük ölçekli problemlerde başarıyla uygulanmıştır. Dai ve Zhang [9] tarafından önerilen DJAYA-RL yöntemi, JAYA algoritmasını pekiştirmeli öğrenme ile birleştirerek indirimli 0-1 sırt çantası probleminde etkili sonuçlar elde etmiştir.
+Greedy algoritması \cite{martello1990knapsack}, her adımda en yüksek değer/ağırlık oranına sahip eşyayı seçer. Genetik Algoritmalar, Parçacık Sürü Optimizasyonu (PSO) ve Karınca Kolonisi Optimizasyonu (ACO) gibi metasezgisel yöntemler, büyük ölçekli problemlerde başarıyla uygulanmıştır. Dai ve Zhang \cite{dai2025djaya} tarafından önerilen DJAYA-RL yöntemi, JAYA algoritmasını pekiştirmeli öğrenme ile birleştirerek indirimli 0-1 sırt çantası probleminde etkili sonuçlar elde etmiştir.
 
 \subsection{Pekiştirmeli Öğrenme Yaklaşımları}
 
-Mnih ve diğerleri [3] tarafından önerilen mevcut  DQN (Deep Q-Network), Atari oyunlarında insanüstü performans göstermiştir. DQN, deneyim tekrarı (experience replay) ve hedef ağ (target network) teknikleriyle eğitim stabilitesini artırmaktadır. Bello ve diğerleri [4], Pointer Network ile Kombinatoryal Optimizasyon problemlerini çözmüştür. Sutton ve Barto [5] pekiştirmeli öğrenmenin temellerini kapsamlı bir şekilde sunmuştur.
+Mnih ve diğerleri \cite{mnih2015human} tarafından önerilen mevcut  DQN (Deep Q-Network), Atari oyunlarında insanüstü performans göstermiştir. DQN, deneyim tekrarı (experience replay) ve hedef ağ (target network) teknikleriyle eğitim stabilitesini artırmaktadır. Bello ve diğerleri \cite{bello2016neural}, Pointer Network ile Kombinatoryal Optimizasyon problemlerini çözmüştür. Sutton ve Barto \cite{sutton2018reinforcement} pekiştirmeli öğrenmenin temellerini kapsamlı bir şekilde sunmuştur.
 
-Rahmani ve diğerleri [8], DQN'ler için sinir mimarisi arama (NAS-DQN) yaklaşımıyla sabit mimarilerin aksine adaptif mimarilerin daha iyi performans gösterdiğini kanıtlamıştır. Bu bulgu, çalışmamızdaki hidden layer optimizasyonunun önemini desteklemektedir.
+Rahmani ve diğerleri \cite{rahmani2025integrated}, DQN'ler için sinir mimarisi arama (NAS-DQN) yaklaşımıyla sabit mimarilerin aksine adaptif mimarilerin daha iyi performans gösterdiğini kanıtlamıştır. Bu bulgu, çalışmamızdaki hidden layer optimizasyonunun önemini desteklemektedir.
 
-Ke ve diğerleri [10], uç bilişim ağlarında kaynak tahsisi için D3QN (Dueling Double DQN) ile DDPG'yi birleştiren hibrit bir yaklaşım önermiştir. Bu çalışma, DRL tabanlı yöntemlerin gerçek dünya kaynak tahsisi problemlerinde uygulanabilirliğini göstermektedir.
+Ke ve diğerleri \cite{ke2025hybrid}, uç bilişim ağlarında kaynak tahsisi için D3QN (Dueling Double DQN) ile DDPG'yi birleştiren hibrit bir yaklaşım önermiştir. Bu çalışma, DRL tabanlı yöntemlerin gerçek dünya kaynak tahsisi problemlerinde uygulanabilirliğini göstermektedir.
 
-NCO Survey [11], içerisinde çok fazla seçenek barındıran optimizasyon (kombinatoryal optimizasyon) problemleri için sinirsel çözüm yöntemlerini kapsamlı bir şekilde incelemekte ve bu alandaki son gelişmeleri özetlemektedir. Bu çalışmada, literatürdeki en güncel yaklaşımlar arasında yer alan DQN yöntemi tercih edilmiştir.
+NCO Survey \cite{nco2024survey}, içerisinde çok fazla seçenek barındıran optimizasyon (kombinatoryal optimizasyon) problemleri için sinirsel çözüm yöntemlerini kapsamlı bir şekilde incelemekte ve bu alandaki son gelişmeleri özetlemektedir. Bu çalışmada, literatürdeki en güncel yaklaşımlar arasında yer alan DQN yöntemi tercih edilmiştir.
 
 \section{Yöntem}
 
@@ -116,13 +117,13 @@ Bu gösterimde $C_t$ ve $R_t$ sistemde kalan CPU ve RAM kaynaklarını ifade ede
 
 \subsection{DQN Algoritması}
 
-DQN, Q-learning algoritmasını derin sinir ağları ile birleştirir [3]. Q-değeri güncelleme denklemi aşağıdaki şekilde ifade edilmektedir:
+DQN, Q-learning algoritmasını derin sinir ağları ile birleştirir \cite{mnih2015human}. Q-değeri güncelleme denklemi aşağıdaki şekilde ifade edilmektedir:
 
 \begin{equation}
 Q(s,a) \leftarrow Q(s,a) + \alpha \left(r + \gamma \max_{a'} Q(s',a') - Q(s,a)\right)
 \end{equation}
 
-Literatürdeki güncel çalışmalarda olduğu gibi [8], sinir ağı mimarisinin performans üzerindeki etkisi incelenmiş ve en iyi performans gösteren mimari [128,64] olarak belirlenmiştir. Kullanılan ağ yapısında giriş katmanı 5 nörondan oluşmaktadır. Bunun ardından ReLU aktivasyon fonksiyonu kullanılan 128 nöronlu birinci gizli katman ve 64 nöronlu ikinci gizli katman yer almaktadır. Ağın çıkış katmanı ise iki farklı aksiyonu temsil eden 2 nörondan oluşmaktadır.
+Literatürdeki güncel çalışmalarda olduğu gibi \cite{rahmani2025integrated}, sinir ağı mimarisinin performans üzerindeki etkisi incelenmiş ve en iyi performans gösteren mimari [128,64] olarak belirlenmiştir. Kullanılan ağ yapısında giriş katmanı 5 nörondan oluşmaktadır. Bunun ardından ReLU aktivasyon fonksiyonu kullanılan 128 nöronlu birinci gizli katman ve 64 nöronlu ikinci gizli katman yer almaktadır. Ağın çıkış katmanı ise iki farklı aksiyonu temsil eden 2 nörondan oluşmaktadır.
 
 Kullanılan hiperparametreler Tablo I'de gösterilmektedir.
 
@@ -205,7 +206,7 @@ Tablo III farklı batch boyutlarının performansını göstermektedir. Çok kü
 
 Tablo IV farklı gamma değerlerinin performansını göstermektedir. Çok düşük gamma (0.95) kısa vadeli düşünceyle fırsatları kaçırmış, çok yüksek gamma (0.999+) ise öğrenmeyi zorlaştırmıştır. En iyi denge 0.99'da elde edilmiştir.
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \caption{Gamma Optimizasyonu Sonuçları}
 \begin{tabular}{lccc}
@@ -224,7 +225,7 @@ Tablo IV farklı gamma değerlerinin performansını göstermektedir. Çok düş
 
 \subsection{Hidden Layer Mimarisi Optimizasyonu}
 
-Rahmani ve diğerleri [8] tarafından vurgulandığı gibi, sinir ağı mimarisi DQN performansını doğrudan etkilemektedir. Tablo V farklı ağ mimarilerinin performansını göstermektedir. Tek katmanlı geniş ağ ([128]) ezberleme (overfitting) yapmış, derin ağ ([64,64]) daha iyi performans göstermiştir. En iyi performans, geniş ve derin mimariyi birleştiren [128,64] ile elde edilmiştir.
+Rahmani ve diğerleri \cite{rahmani2025integrated} tarafından vurgulandığı gibi, sinir ağı mimarisi DQN performansını doğrudan etkilemektedir. Tablo V farklı ağ mimarilerinin performansını göstermektedir. Tek katmanlı geniş ağ ([128]) ezberleme (overfitting) yapmış, derin ağ ([64,64]) daha iyi performans göstermiştir. En iyi performans, geniş ve derin mimariyi birleştiren [128,64] ile elde edilmiştir.
 
 \begin{table}[h]
 \centering
@@ -244,7 +245,7 @@ Rahmani ve diğerleri [8] tarafından vurgulandığı gibi, sinir ağı mimarisi
 
 \subsection{Optimizasyon Özeti}
 
-Tablo VI tüm hiperparametre optimizasyonu sonuçlarını özetlemektedir. Sistematik hiperparametre optimizasyonu ile DQN performansı 241.32'den 251.48'e iyileştirilmiştir. Bu iyileşme, literatürdeki benzer çalışmalarla tutarlılık göstermektedir [7, 9].
+Tablo VI tüm hiperparametre optimizasyonu sonuçlarını özetlemektedir. Sistematik hiperparametre optimizasyonu ile DQN performansı 241.32'den 251.48'e iyileştirilmiştir. Bu iyileşme, literatürdeki benzer çalışmalarla tutarlılık göstermektedir \cite{li2026deep, dai2025djaya}.
 
 \begin{table}[h]
 \centering
@@ -314,7 +315,7 @@ Elde edilen sonuçlar göstermektedir ki:
 \begin{enumerate}
 \item \textbf{DQN, Greedy'den önemli ölçüde daha başarılıdır:} DQN ajanı, Greedy algoritmasına kıyasla +66.93 puan (\%36.3) daha iyi performans göstermiştir. Bu fark istatistiksel olarak anlamlıdır ve DQN'un öğrenme yeteneğini kanıtlamaktadır.
 
-\item \textbf{DQN optimuma yakınsamaktadır:} DQN'un aldığı ortalama ödül, DP'nin teorik optimumunun \%90.3'üne ulaşmıştır. Bu oran, Li ve Guo [7] ile Dai ve Zhang [9]'un çalışmalarında elde edilen sonuçlarla tutarlılık göstermektedir.
+\item \textbf{DQN optimuma yakınsamaktadır:} DQN'un aldığı ortalama ödül, DP'nin teorik optimumunun \%90.3'üne ulaşmıştır. Bu oran, Li ve Guo \cite{li2026deep} ile Dai ve Zhang \cite{dai2025djaya}'un çalışmalarında elde edilen sonuçlarla tutarlılık göstermektedir.
 
 \item \textbf{Hiperparametre optimizasyonu kritiktir:} Sistematik hiperparametre optimizasyonu ile DQN performansı 241.32'den 251.48'e +10.16 puan iyileştirilmiştir. Bu, parametre seçiminin model başarısındaki önemini göstermektedir.
 
@@ -323,7 +324,7 @@ Elde edilen sonuçlar göstermektedir ki:
 
 \subsection{Yapılmayan Deneylerin Gerekçesi}
 
-Bazı parametreler (Replay Buffer Capacity, Kaynak Kapasitesi, Episode Uzunluğu) hiperparametre optimizasyonu kapsamı dışında tutulmuştur. Replay Buffer Capacity için literatürde 100000 değeri genellikle yeterli bulunmakta ve bu ölçekteki problemlerde performans üzerindeki etkisi sınırlı kalmaktadır [3]. Kaynak Kapasitesi ve Episode Uzunluğu ise ajanın (DQN) eğitim parametreleri değil, problemin (environment) temel dinamiklerini ve zorluğunu belirleyen çevresel kısıtlardır. Bu değerlerin değiştirilmesi, ajanın öğrenme kapasitesini optimize etmekten ziyade tamamen farklı bir sırt çantası problemi tanımlayacağı için çalışmanın odak noktası dışında bırakılmıştır.
+Bazı parametreler (Replay Buffer Capacity, Kaynak Kapasitesi, Episode Uzunluğu) hiperparametre optimizasyonu kapsamı dışında tutulmuştur. Replay Buffer Capacity için literatürde 100000 değeri genellikle yeterli bulunmakta ve bu ölçekteki problemlerde performans üzerindeki etkisi sınırlı kalmaktadır \cite{mnih2015human}. Kaynak Kapasitesi ve Episode Uzunluğu ise ajanın (DQN) eğitim parametreleri değil, problemin (environment) temel dinamiklerini ve zorluğunu belirleyen çevresel kısıtlardır. Bu değerlerin değiştirilmesi, ajanın öğrenme kapasitesini optimize etmekten ziyade tamamen farklı bir sırt çantası problemi tanımlayacağı için çalışmanın odak noktası dışında bırakılmıştır.
 
 \section{Sonuçlar ve Gelecek Çalışmalar}
 
@@ -335,7 +336,7 @@ Elde edilen sonuçları özetleyecek olursak:
 \item En iyi konfigürasyonda ([128,64] gizli katman, epsilon\_decay=0.9995, batch\_size=128) DQN ajanı \textbf{251.48} ödül toplamıştır.
 \item Bu sonuç, DP optimumunun \textbf{\%90.3}'üne ulaştığını göstermektedir.
 \item DQN, Greedy algoritmasını \textbf{\%36.3} oranında geçmiştir.
-\item Hiperparametre optimizasyonu performansı \textbf{+10.16} puan iyileştirmiştir.
+\item Hiperparametre optimizasyonu performansı \textbf{+10.16} puan iyileştirilmiştir.
 \end{itemize}
 
 Bu sonuçlar, pekiştirmeli öğrenmenin klasik optimizasyon problemlerinde etkili bir alternatif olabileceğini göstermektedir. Özellikle problem dinamik olduğunda ve görevler önceden bilinmediğinde, DQN gibi öğrenebilen modeller klasik yöntemlere göre avantaj sağlamaktadır.
@@ -343,10 +344,10 @@ Bu sonuçlar, pekiştirmeli öğrenmenin klasik optimizasyon problemlerinde etki
 Gelecek çalışmalarda:
 
 \begin{itemize}
-\item Daha karmaşık DRL algoritmaları (PPO, A3C, SAC, Double DQN) denenebilir. Ke ve diğerleri [10] tarafından önerilen D3QN gibi hibrit yaklaşımlar, kaynak tahsisi problemlerinde umut verici sonuçlar göstermiştir.
-\item Pointer Network veya Attention mekanizmaları ile problem daha büyük ölçeklerde çözülebilir [4]. Bu yaklaşımlar, değişken uzunluktaki girdi dizilerini daha etkili işleyebilir.
+\item Daha karmaşık DRL algoritmaları (PPO, A3C, SAC, Double DQN) denenebilir. Ke ve diğerleri \cite{ke2025hybrid} tarafından önerilen D3QN gibi hibrit yaklaşımlar, kaynak tahsisi problemlerinde umut verici sonuçlar göstermiştir.
+\item Pointer Network veya Attention mekanizmaları ile problem daha büyük ölçeklerde çözülebilir \cite{bello2016neural}. Bu yaklaşımlar, değişken uzunluktaki girdi dizilerini daha etkili işleyebilir.
 \item Gerçek dünya veri setleri (AWS, Google Cloud görev kayıtları) ile test edilebilir. Bu, modelin pratik uygulanabilirliğini değerlendirmek açısından önemlidir.
-\item Prioritized Experience Replay [6] denenebilir. Bu teknik, önemli deneyimlerin daha sık tekrarlanmasını sağlayarak öğrenme verimliliğini artırabilir.
+\item Prioritized Experience Replay \cite{schaul2015prioritized} denenebilir. Bu teknik, önemli deneyimlerin daha sık tekrarlanmasını sağlayarak öğrenme verimliliğini artırabilir.
 \end{itemize}
 
 \section*{Teşekkür}
@@ -354,30 +355,7 @@ Gelecek çalışmalarda:
 Yazarlar, bu projenin Algoritma Analizi ve Tasarımı dersi kapsamında takım arkadaşlarıyla birlikte gerçekleştirildiğini belirtmekten mutluluk duyar. Ders hocamıza değerli rehberliği ve akademik katkıları için; ekip arkadaşlarımıza ise özverili iş birliği ve ortak çabaları için teşekkür ederiz.
 
 
-\begin{thebibliography}{99}
-
-\bibitem{1} H. Kellerer, U. Pferschy, and D. Pisinger, "Knapsack Problems," Springer, 2004.
-
-\bibitem{2} S. Martello and P. Toth, "Knapsack Problems: Algorithms and Computer Implementations," John Wiley \& Sons, 1990.
-
-\bibitem{3} V. Mnih et al., "Human-level control through deep reinforcement learning," Nature, vol. 518, no. 7540, pp. 529-533, 2015.
-
-\bibitem{4} I. Bello, H. Pham, Q. V. Le, M. Norouzi, and S. Bengio, "Neural Combinatorial Optimization with Reinforcement Learning," arXiv preprint arXiv:1611.09940, 2016.
-
-\bibitem{5} R. S. Sutton and A. G. Barto, "Reinforcement Learning: An Introduction," MIT Press, 2018.
-
-\bibitem{6} T. Schaul, J. Quan, I. Antonoglou, and D. Silver, "Prioritized Experience Replay," arXiv preprint arXiv:1511.05952, 2015.
-
-\bibitem{7} B. Li and Y. Guo, "Deep Reinforcement Learning Algorithms for Heterogeneous Multiple Knapsack Problems," Computer Engineering, vol. 52, no. 4, pp. 140-162, 2026.
-
-\bibitem{8} I. Rahmani, S. Yazdannik, M. Tayefi, and J. Roshanian, "An Integrated Approach to Neural Architecture Search for Deep Q-Networks," arXiv preprint arXiv:2510.19872, 2025.
-
-\bibitem{9} Z. Dai and Y. Zhang, "DJAYA-RL: Discrete JAYA algorithm integrating reinforcement learning for the discounted 0-1 knapsack problem," Swarm and Evolutionary Computation, vol. 95, p. 101927, 2025.
-
-\bibitem{10} H. Ke, J. Zhao, Y. Ding, and L. Pan, "Hybrid deep reinforcement learning-based workload migrating and resource allocation policies for weighted cost minimization in edge collaboration networks," Future Generation Computer Systems, 2025.
-
-\bibitem{11} "Neural Combinatorial Optimization Algorithms for Solving Vehicle Routing Problems: A Comprehensive Survey with Perspectives," arXiv preprint arXiv:2406.00415, 2024.
-
-\end{thebibliography}
+\bibliographystyle{IEEEtran}
+\bibliography{references}
 
 \end{document}
