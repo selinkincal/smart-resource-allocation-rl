@@ -1,26 +1,27 @@
-# 1. بيئة العمل الافتراضية (Virtual Environment)
-# هذا هو الأهم لأن مجلد venv يحتوي على مكتبات ضخمة جداً مثل torch
+# 1. Sanal Ortam (Virtual Environment)
+# Bu kısım en önemlisidir çünkü venv klasörü PyTorch gibi GB'larca yer tutan kütüphaneleri içerir.
 venv/
 .venv/
 env/
 
-# 2. ملفات بايثون المؤقتة
+# 2. Geçici Python Dosyaları
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .pytest_cache/
 
-# 3. المجلدات الناتجة عن تشغيل الكود (Outputs)
-# نفضل عادة استبعادها ليقوم أصدقاؤك بتوليد نتائجهم الخاصة
-plots/
-saved_models/
+# 3. Kodun Çalışması Sonucu Oluşan Klasörler (Çıktılar)
+# NOT: Proje sunumu ve GitHub portfolyosunda sonuçların doğrudan görünmesi 
+# istendiği için plots ve saved_models klasörlerinin engeli kaldırılmıştır.
+# plots/
+# saved_models/
 
-# 4. ملفات النظام وبيئات التطوير
+# 4. Sistem Dosyaları ve Geliştirme Ortamları
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
-# 5. ملفات البيانات واللوجز
+# 5. Veri ve Log Dosyaları
 *.log
