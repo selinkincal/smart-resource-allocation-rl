@@ -88,5 +88,5 @@ pip install torch gymnasium numpy matplotlib
 python train.py
 
 # 4. Modelleri Karşılaştırın ve Sonuçları Görün
-python compare.pyn to evaluate the "learning to optimize" paradigm against classical combinatorial optimization methods.
+python compare.py
 
